@@ -1,0 +1,3 @@
+/Users/remirobert/ClionProjects/SocketTest/CMakeFiles/edit_cache.dir
+/Users/remirobert/ClionProjects/SocketTest/CMakeFiles/rebuild_cache.dir
+/Users/remirobert/ClionProjects/SocketTest/CMakeFiles/SocketTest.dir
