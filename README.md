@@ -4,8 +4,8 @@
 <img align="left" width="366" alt="screen shot 2016-05-11 at 15 54 58" src="https://cloud.githubusercontent.com/assets/3276768/15173809/cc4a00ea-1790-11e6-999d-611bb5123a53.png">
 
 </br></br></br>
-Small, and basic http server, written full in **C**.
-Use the **kevent** for async socket. Available on **OSX**, or **Free BSD**.
+Small, and basic http server, written in full **C** 😾    🐕.
+Use the **kevent** for async socket. Available for **OSX**, or **Free BSD**.
 
 
 </br></br>
