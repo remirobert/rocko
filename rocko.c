@@ -97,10 +97,12 @@ enum method_request method_from_char(char *method) {
     return UNKNOW;
 }
 
-void route_init() {
+struct server_routes *route_init() {
+    struct server_routes *routes = malloc(sizeof(struct server_routes));
     routes->size = ROUTE_INITIAL_CAPACITY;
     routes->count = 0;
     routes->routes = malloc(sizeof(struct server_route) * routes->size);
+    return routes;
 }
 
 void check_size_capacity(struct server_routes *routes) {
@@ -120,7 +122,7 @@ void free_routes(struct server_routes *routes) {
     free(routes->routes);
 }
 
-void server_add_route(char *method, char *request_URI, struct response (* route_func)(struct request)) {
+void rocko_add_route(char *method, char *request_URI, struct response (* route_func)(struct request)) {
     struct server_route route = {method_from_char(method), request_URI, route_func};
     add_route(routes, route);
 }
@@ -187,12 +189,15 @@ void init_event_k() {
     watch_loop(kq);
 }
 
-void init_socket() {
+void init_socket(unsigned int port) {
     memset(&hints, 0, sizeof hints);
     hints.ai_family = PF_UNSPEC; /* any supported protocol */
     hints.ai_flags = AI_PASSIVE; /* result for bind() */
     hints.ai_socktype = SOCK_STREAM; /* TCP */
-    int error = getaddrinfo("127.0.0.1", "8080", &hints, &addr);
+
+    char buf_port[5] = {0};
+    sprintf(buf_port, "%d", port);
+    int error = getaddrinfo("127.0.0.1", buf_port, &hints, &addr);
     if (error)
         errx(1, "getaddrinfo failed: %s", gai_strerror(error));
 
@@ -201,6 +206,14 @@ void init_socket() {
         errx(1, "bind failed: error binding socket");
     }
     listen(local_s, 5);
+}
+
+void rocko_init() {
+    routes = route_init();
+}
+
+void rocko_start(unsigned int port) {
+    init_socket(port);
     init_event_k();
 }
 

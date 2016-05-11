@@ -47,8 +47,9 @@ struct server_route {
     struct response (* route_func)(struct request);
 };
 
-void init_socket();
-void server_add_route(char *method, char *request_URI, struct response (* route_func)(struct request));
+void rocko_start(unsigned int port);
+void rocko_init();
+void rocko_add_route(char *method, char *request_URI, struct response (* route_func)(struct request));
 
 
 #endif //ROCKO_ROCKO_H
