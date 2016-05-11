@@ -10,7 +10,7 @@ Use the **kevent** for async socket. Available for **OSX**, or **Free BSD**.
 
 </br></br>
 
-⚠️ This project under development ⭐️.
+⚠️ This project is under development ⭐️.
 
 #Installation
 
