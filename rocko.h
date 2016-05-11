@@ -17,6 +17,8 @@ enum response_code {
 enum method_request {
     GET,
     POST,
+    PUT,
+    DELETE,
     UNKNOW
 };
 

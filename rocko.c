@@ -94,6 +94,8 @@ void recv_request(int s);
 enum method_request method_from_char(char *method) {
     if (strcmp(method, "GET") == 0) return GET;
     else if (strcmp(method, "POST") == 0) return POST;
+    else if (strcmp(method, "PUT") == 0) return PUT;
+    else if (strcmp(method, "DELETE") == 0) return DELETE;
     return UNKNOW;
 }
 
@@ -146,16 +148,10 @@ void parse_request(char *buf, struct request *req) {
     char *line;
     char *buf_copy = strdup(buf);
 
-    printf("[READ REQUEST] : [%s]\n\n", buf);
-
     line = strsep(&buf_copy, "\n");
-    printf("current line request : %s\n", line);
     req->header.method = method_from_char(strdup(strsep(&line, " ")));
-    printf("current line request : %s\n", line);
     req->header.request_URI = strdup(strsep(&line, " "));
-    printf("current line request : %s\n", line);
     req->header.http_version = strdup(strsep(&line, " "));
-    printf("current line request : %s\n", line);
 
     line = NULL;
     while ((line = strsep(&buf_copy, "\n"))) {
@@ -195,9 +191,9 @@ void init_event_k() {
 
 void init_socket(unsigned int port) {
     memset(&hints, 0, sizeof hints);
-    hints.ai_family = PF_UNSPEC; /* any supported protocol */
-    hints.ai_flags = AI_PASSIVE; /* result for bind() */
-    hints.ai_socktype = SOCK_STREAM; /* TCP */
+    hints.ai_family = PF_UNSPEC;
+    hints.ai_flags = AI_PASSIVE;
+    hints.ai_socktype = SOCK_STREAM;
 
     char buf_port[5] = {0};
     sprintf(buf_port, "%d", port);
@@ -244,12 +240,7 @@ void match_route_request(struct request *req, int fd) {
             struct response rep = current_route.route_func(*req);
 
             char *response = make_response(rep.code, rep.body);
-
             send_msg(fd, response);
-
-//            ssize_t ret_write = write(fd, response_header, strlen(response_header));
-//            write(fd, rep.body, strlen(rep.body));
-
             has_found = 1;
             break;
         }
@@ -269,35 +260,31 @@ void watch_loop(int kq) {
 
     while (1) {
         nev = kevent(kq, NULL, 0, evList, 32, NULL);
-        if (nev < 1)
+        if (nev < 1) {
             err(1, "kevent");
+        }
         for (i = 0; i < nev; i++) {
             if (evList[i].flags & EV_EOF) {
-                printf("disconnect\n");
                 fd = evList[i].ident;
                 EV_SET(&evSet, fd, EVFILT_READ, EV_DELETE, 0, 0, NULL);
-                if (kevent(kq, &evSet, 1, NULL, 0, NULL) == -1)
+                if (kevent(kq, &evSet, 1, NULL, 0, NULL) == -1) {
                     err(1, "kevent");
+                }
                 conn_delete(fd);
             }
             else if (evList[i].ident == local_s) {
-                fd = accept(evList[i].ident, (struct sockaddr *) &addr,
-                            &socklen);
-                if (fd == -1)
+                fd = accept(evList[i].ident, (struct sockaddr *) &addr, &socklen);
+                if (fd == -1) {
                     err(1, "accept");
+                }
                 if (conn_add(fd) == 0) {
                     EV_SET(&evSet, fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
-                    if (kevent(kq, &evSet, 1, NULL, 0, NULL) == -1)
+                    if (kevent(kq, &evSet, 1, NULL, 0, NULL) == -1) {
                         err(1, "kevent");
-//                    send_msg(fd, "welcome!\n");
+                    }
                 } else {
-                    printf("connection refused\n");
-                    close(fd);
+                    CLOSE_FD(fd);
                 }
-            }
-            else if (evList[i].flags & EVFILT_WRITE) {
-                printf("send request : \n");
-//                send_msg(fd, "HTTP/1.1 200 OK\r\n\r\n");
             }
             else if (evList[i].flags & EVFILT_READ) {
                 recv_request(evList[i].ident);
@@ -327,23 +314,18 @@ void recv_request(int s) {
         return;
 
     bytes_read = recv(s, buf, sizeof(buf), 0);
-    if (bytes_read != -1)
-        printf("%d bytes read\n", (int) bytes_read);
-    printf("buf : %s\n", buf);
-
+    if (bytes_read != -1) {
+        CLOSE_FD(s);
+        return;
+    }
     struct uc current_user = users[uidx];
 
     parse_request(buf, &current_user.req);
     match_route_request(&current_user.req, s);
-
-//    char *response = make_response(R_200, current_user.req.body);
-//
-//    send_msg(s, response);
     CLOSE_FD(s);
     conn_delete(s);
 }
 
-/* find the index of a file descriptor or a new slot if fd=0 */
 int conn_index(int fd) {
     int uidx;
     for (uidx = 0; uidx < NUMBER_USERS; uidx++)
@@ -352,7 +334,6 @@ int conn_index(int fd) {
     return -1;
 }
 
-/* add a new connection storing the IP address */
 int conn_add(int fd) {
     int uidx;
     if (fd < 1) return -1;
@@ -362,12 +343,11 @@ int conn_add(int fd) {
         CLOSE_FD(fd);
         return -1;
     }
-    users[uidx].uc_fd = fd; /* users file descriptor */
-    users[uidx].uc_addr = 0; /* user IP address */
+    users[uidx].uc_fd = fd;
+    users[uidx].uc_addr = 0;
     return 0;
 }
 
-/* remove a connection and close it's fd */
 int conn_delete(int fd) {
     int uidx;
     if (fd < 1) return -1;
@@ -377,7 +357,6 @@ int conn_delete(int fd) {
     users[uidx].uc_fd = 0;
     users[uidx].uc_addr = NULL;
 
-    /* free(users[uidx].uc_addr); */
     CLOSE_FD(fd);
     return 0;
 }
