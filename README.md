@@ -54,3 +54,4 @@ int main(int argc, char **argv) {
 - A lot of tests
 - Buffer cricular, for reading and write on the sockets
 - Upload, download files
+- Benchmark, with orther languages and frameworks
