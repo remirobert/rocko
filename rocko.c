@@ -144,17 +144,21 @@ char *make_response(enum response_code code, char *body) {
 void parse_request(char *buf, struct request *req) {
     int isBody = 0;
     char *line;
-    char *bufCopy = strdup(buf);
+    char *buf_copy = strdup(buf);
 
     printf("[READ REQUEST] : [%s]\n\n", buf);
 
-    line = strsep(&bufCopy, "\n");
+    line = strsep(&buf_copy, "\n");
+    printf("current line request : %s\n", line);
     req->header.method = method_from_char(strdup(strsep(&line, " ")));
+    printf("current line request : %s\n", line);
     req->header.request_URI = strdup(strsep(&line, " "));
+    printf("current line request : %s\n", line);
     req->header.http_version = strdup(strsep(&line, " "));
+    printf("current line request : %s\n", line);
 
     line = NULL;
-    while ((line = strsep(&bufCopy, "\n"))) {
+    while ((line = strsep(&buf_copy, "\n"))) {
         if (strlen(line) == 1 && strcmp(line, "\n")) {
             isBody = 1;
             continue;
@@ -215,6 +219,44 @@ void rocko_init() {
 void rocko_start(unsigned int port) {
     init_socket(port);
     init_event_k();
+}
+
+void response_error(int fd) {
+    char *response_error = make_response(R_404, NULL);
+    send_msg(fd, response_error);
+}
+
+void match_route_request(struct request *req, int fd) {
+    int has_found = 0;
+
+    printf("march route : %s\n", req->header.request_URI);
+
+    if (req == NULL || routes == NULL) {
+        response_error(fd);
+        return;
+    }
+
+    for (int i = 0; i < routes->count; i++) {
+        struct server_route current_route = routes->routes[i];
+
+        if (current_route.method == req->header.method &&
+            strcmp(req->header.request_URI, current_route.request_URI) == 0) {
+            struct response rep = current_route.route_func(*req);
+
+            char *response = make_response(rep.code, rep.body);
+
+            send_msg(fd, response);
+
+//            ssize_t ret_write = write(fd, response_header, strlen(response_header));
+//            write(fd, rep.body, strlen(rep.body));
+
+            has_found = 1;
+            break;
+        }
+    }
+    if (!has_found) {
+        response_error(fd);
+    }
 }
 
 void watch_loop(int kq) {
@@ -292,16 +334,17 @@ void recv_request(int s) {
     struct uc current_user = users[uidx];
 
     parse_request(buf, &current_user.req);
-    char *response = make_response(R_200, current_user.req.body);
+    match_route_request(&current_user.req, s);
 
-    send_msg(s, response);
+//    char *response = make_response(R_200, current_user.req.body);
+//
+//    send_msg(s, response);
     CLOSE_FD(s);
     conn_delete(s);
 }
 
 /* find the index of a file descriptor or a new slot if fd=0 */
-int
-conn_index(int fd) {
+int conn_index(int fd) {
     int uidx;
     for (uidx = 0; uidx < NUMBER_USERS; uidx++)
         if (users[uidx].uc_fd == fd)
@@ -310,8 +353,7 @@ conn_index(int fd) {
 }
 
 /* add a new connection storing the IP address */
-int
-conn_add(int fd) {
+int conn_add(int fd) {
     int uidx;
     if (fd < 1) return -1;
     if ((uidx = conn_index(0)) == -1)
@@ -326,8 +368,7 @@ conn_add(int fd) {
 }
 
 /* remove a connection and close it's fd */
-int
-conn_delete(int fd) {
+int conn_delete(int fd) {
     int uidx;
     if (fd < 1) return -1;
     if ((uidx = conn_index(fd)) == -1)
