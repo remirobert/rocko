@@ -9,6 +9,9 @@ Use the **kevent** for async socket. Available for **OSX**, or **Free BSD**.
 
 
 </br></br>
+
+⚠️ This project under development ⭐️.
+
 #Installation
 
 Use CMake to generate a Makefile, and the compile the source.
@@ -45,3 +48,9 @@ int main(int argc, char **argv) {
     return 0
 }
 ```
+
+###Todo 🦀💨
+
+- A lot of tests
+- Buffer cricular, for reading and write on the sockets
+- Upload, download files
